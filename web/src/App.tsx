@@ -241,7 +241,7 @@ export default function App() {
       <aside className="sidebar">
         <div className="brand-row">
           <div className="brand-mark"><Feather className="size-5" /></div>
-          <div><h1>colibrì</h1><p>{t("brand.tagline")}</p></div>
+          <div><h1>{t("brand.name")}</h1><p>{t("brand.tagline")}</p></div>
         </div>
 
         <section className="side-section">

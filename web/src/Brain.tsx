@@ -146,7 +146,7 @@ export function Brain({ baseUrl, apiKey, connected }: { baseUrl: string; apiKey:
       <div className="brain-head">
         <div className="section-title"><BrainCircuit className="size-4" /> {t("brain.title")} — {data ? t("brain.layers", { rows: data.rows, cols: data.cols }) : t("brain.waiting")}</div>
         <div className="brain-legend">
-          <span><i style={{ background: "#4ed6a5" }} /> {t("tier.vram")} {totals[2].toLocaleString()}</span>
+          <span><i style={{ background: "#5b8def" }} /> {t("tier.vram")} {totals[2].toLocaleString()}</span>
           <span><i style={{ background: "#5a9bd8" }} /> {t("tier.ram")} {totals[1].toLocaleString()}</span>
           <span><i style={{ background: "#3a4750" }} /> {t("tier.disk")} {totals[0].toLocaleString()}</span>
           <span><Flame className="size-3" /> {t("brain.brightnessHint")}</span>
@@ -164,7 +164,7 @@ export function Brain({ baseUrl, apiKey, connected }: { baseUrl: string; apiKey:
         return (
         <div className="brain-tip" style={{ left: Math.min(tip.x + 14, window.innerWidth - 260), top: Math.min(tip.y + 14, window.innerHeight - 170) }}>
           <div className="brain-tip-title"><Layers className="size-3" /> Layer {realLayer}{isMtp ? " (MTP)" : ""} · Expert {tip.col}</div>
-          <div>Tier: <strong style={{ color: ["#8b9aa3", "#5a9bd8", "#4ed6a5"][tip.tier] }}>{t(TIER_KEYS[tip.tier])}</strong></div>
+          <div>Tier: <strong style={{ color: ["#8b9aa3", "#5a9bd8", "#5b8def"][tip.tier] }}>{t(TIER_KEYS[tip.tier])}</strong></div>
           <div>Heat: <strong>{tip.heat === 0 ? t("brain.neverRouted") : t("brain.selections", { heat: tip.heat })}</strong></div>
           {entry ? <>
             <div className={entry.label.startsWith("specialist") ? "brain-tip-spec" : undefined}>

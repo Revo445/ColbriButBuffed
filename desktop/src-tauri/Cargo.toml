@@ -1,8 +1,8 @@
 [package]
 name = "colibri-desktop"
 version = "0.1.0"
-description = "Native desktop shell for the colibri inference engine"
-authors = ["colibri contributors"]
+description = "ColbriButBuffed — blue/gray desktop shell for low-spec Colibrì"
+authors = ["ColbriButBuffed"]
 edition = "2024"
 rust-version = "1.85"
 
