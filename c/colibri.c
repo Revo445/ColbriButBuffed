@@ -8917,8 +8917,10 @@ int main(int argc, char **argv){
     if(g_cache_route && !getenv("ROUTE_AGREE")) g_route_agree=1;
     const char *policy=getenv("COLI_POLICY"); if(!policy) policy="quality";
     int experimental=!strcmp(policy,"experimental-fast");
-    if(strcmp(policy,"quality")&&strcmp(policy,"balanced")&&!experimental){
-        fprintf(stderr,"COLI_POLICY non valida: quality, balanced o experimental-fast\n"); return 2;
+    /* lowspec: ColbriButBuffed quality-preserving placement profile (same router/quant
+     * guarantees as quality/balanced; knobs live in PIPE/DIRECT/PIN_GB/DRAFT/…). */
+    if(strcmp(policy,"quality")&&strcmp(policy,"balanced")&&strcmp(policy,"lowspec")&&!experimental){
+        fprintf(stderr,"COLI_POLICY non valida: quality, balanced, lowspec o experimental-fast\n"); return 2;
     }
     if(!experimental&&(g_topk>0||g_topp>0)){
         fprintf(stderr,"[policy] --topp/--topk drop low-weight experts (~1.6x fewer reads, small quality cost)\n");
