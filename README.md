@@ -1,17 +1,24 @@
 <p align="center">
-  <img src="assets/colibri.svg" width="500" alt="colibrì — tiny engine, immense model">
+  <img src="assets/colibri.svg" width="500" alt="ColbriButBuffed — Colibrì for low-spec PCs">
 </p>
 
 <p align="center">
-  <a href="https://justvugg.github.io/colibri"><img src="https://img.shields.io/badge/website-justvugg.github.io%2Fcolibri-1f6feb" alt="Website"></a>
-  <a href="https://github.com/JustVugg/colibri/releases"><img src="https://img.shields.io/github/v/release/JustVugg/colibri?color=2ea043" alt="Latest release"></a>
+  <a href="https://github.com/Revo445/ColbriButBuffed"><img src="https://img.shields.io/badge/fork-ColbriButBuffed-2ea043" alt="ColbriButBuffed"></a>
+  <a href="https://github.com/JustVugg/colibri"><img src="https://img.shields.io/badge/upstream-JustVugg%2Fcolibri-1f6feb" alt="Upstream Colibrì"></a>
+  <a href="docs/lowspec.md"><img src="https://img.shields.io/badge/guide-lowspec%20(25–64%20GB)-e3b341" alt="Lowspec guide"></a>
 </p>
 
 <p align="center">
-  <a href="https://justvugg.github.io/colibri"><b>Website</b></a> ·
-  <a href="https://discord.gg/fpQxKnRb"><b>Discord</b></a> ·
+  <a href="docs/lowspec.md"><b>Lowspec guide</b></a> ·
+  <a href="https://github.com/JustVugg/colibri"><b>Upstream Colibrì</b></a> ·
   English · <a href="README.zh-CN.md">简体中文</a> · <a href="README.zh-TW.md">繁體中文</a> · <a href="README.it.md">Italiano</a>
 </p>
+
+> **This is [ColbriButBuffed](https://github.com/Revo445/ColbriButBuffed)** — a fork of
+> [JustVugg/colibri](https://github.com/JustVugg/colibri) tuned for **25–64 GB RAM**
+> machines. Use `--policy lowspec` (see [docs/lowspec.md](docs/lowspec.md)). Upstream
+> research, formats, and semantics are preserved; placement defaults favor stable
+> hit rate over maximum theoretical cache on tight hosts.
 
 **Tiny engine, immense model.** Run **frontier MoE models — 744B to 2.8T
 parameters** — on consumer and heterogeneous hardware, in pure C with zero
@@ -36,12 +43,23 @@ silently changes model precision or router semantics**. Insufficient fast memory
 may reduce speed; it must not quietly redefine the model.
 
 ```
-$ ./coli chat
-  🐦 colibri v1.4.0 — GLM-5.2 · 744B MoE · int4 · streaming CPU
-  ✓ ready in 32s · resident 9.9 GB
+$ ./coli chat --policy lowspec
+  🐦 colibri — GLM-5.2 · 744B MoE · int4 · streaming CPU
+  ✓ ready · resident ~10 GB · experts from NVMe
   › ciao!
-  ◆ Ciao! 😊 Come posso aiutarti oggi?
 ```
+
+## Get started (lowspec)
+
+On a **25–64 GB** machine, prefer the fork policy:
+
+```bash
+python coli doctor --model /path/to/glm52_i4 --policy lowspec
+python coli chat   --model /path/to/glm52_i4 --policy lowspec
+```
+
+Full walkthrough: **[docs/lowspec.md](docs/lowspec.md)**. You still need the ~372 GB int4
+model on a fast local NVMe — RAM only holds the dense weights plus a small expert cache.
 
 ## See it running
 

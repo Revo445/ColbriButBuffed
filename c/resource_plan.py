@@ -499,9 +499,38 @@ def _auto_tune(bottleneck_class, projected_hit, gpus, cpu_sockets, plan_has_meta
     return tune
 
 
+def _lowspec_tune(tune, projected_hit, cache_slots):
+    """Force lossless streaming knobs for 25–64 GB hosts (ColbriButBuffed).
+
+    MTP widens the expert union and hurts disk-bound decode. A fat default
+    PIN_GB=10 starves the per-layer LRU on ~32 GB boxes; keep pin modest and
+    leave headroom for cache slots. CAP_RAISE=0 avoids thrashing under pressure
+    (measured: raising cap under memory pressure can drop hit rate on Windows).
+    """
+    tune = dict(tune)
+    tune["DRAFT"] = {"value": "0",
+                     "reason": "lowspec: MTP widens expert union on disk-bound hosts"}
+    tune["PIPE"] = {"value": "1",
+                    "reason": "lowspec: overlap expert disk reads with compute"}
+    tune["DIRECT"] = {"value": "1",
+                      "reason": "lowspec: unbuffered expert reads (measure with iobench; set DIRECT=0 if slower)"}
+    tune["PILOT_REAL"] = {"value": "1",
+                          "reason": "lowspec: real cross-layer prefetch (fadvise is a no-op on Windows)"}
+    tune["CAP_RAISE"] = {"value": "0",
+                         "reason": "lowspec: prefer stable hit rate over max theoretical cap"}
+    # Prefer LRU room over a cold-start pin that never matches the prompt yet.
+    pin = "4" if cache_slots >= 8 else "2"
+    if projected_hit >= 0.99:
+        pin = "all"
+    tune["PIN_GB"] = {"value": pin,
+                      "reason": "lowspec: modest pin so LRU is not starved on 25–64 GB hosts"}
+    return tune
+
+
 POLICIES = {
     "quality": {"preserve_quantization": True, "preserve_router": True},
     "balanced": {"preserve_quantization": True, "preserve_router": True},
+    "lowspec": {"preserve_quantization": True, "preserve_router": True},
     "experimental-fast": {"preserve_quantization": False, "preserve_router": False},
 }
 
@@ -569,6 +598,10 @@ def build_plan(model, ram_gb=0, context=4096, gpu_indices=None, vram_gb=0,
         warnings.append("VRAM tier was clamped by free VRAM or model expert size")
     if cold_bytes:
         warnings.append("cold expert misses may reach disk; normal decode speed depends on hit rate")
+    if available_memory and available_memory < 16 * GB:
+        warnings.append("usable RAM under 16 GB: GLM-5.2 streaming is unlikely to stay healthy")
+    elif available_memory and available_memory < 25 * GB:
+        warnings.append("usable RAM under 25 GB: expect very slow disk-bound decode; 32 GB+ recommended")
 
     total_expert = info["expert_bytes"]
     resident_expert = hot_bytes + warm_bytes
@@ -592,6 +625,13 @@ def build_plan(model, ram_gb=0, context=4096, gpu_indices=None, vram_gb=0,
 
     tune = _auto_tune(bottleneck_class, projected_hit, gpus, cpu_sockets,
                       plan_has_metal=False)
+    if policy == "lowspec":
+        tune = _lowspec_tune(tune, projected_hit, cap)
+        if cold_bytes or projected_hit < 0.50:
+            warnings.append(
+                "lowspec: disk-bound decode is expected (often <1 tok/s cold; "
+                "warm .coli_usage PIN history improves this)"
+            )
     probe_state, probe_gbs = ssd_probe_state(info["path"])
 
     return {
@@ -656,6 +696,10 @@ def environment_for_plan(plan, env=None, cuda_enabled=True):
         result.setdefault(key, entry["value"])
     if plan["policy"]["name"] == "balanced":
         result.setdefault("REPIN", "64")
+    if plan["policy"]["name"] == "lowspec":
+        # Modest live re-pin; smaller than balanced so pin churn stays cheap on NVMe.
+        result.setdefault("REPIN", "32")
+        result.setdefault("CTX", "2048")
     ram = plan["tiers"]["ram"]
     result.setdefault("RAM_GB", f"{ram['budget_bytes'] / GB:.3f}")
 

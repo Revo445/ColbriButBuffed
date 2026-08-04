@@ -91,6 +91,19 @@ class DoctorTest(unittest.TestCase):
         self.assertEqual(checks["model.shards"]["details"]["shards"], 1)
         self.assertEqual(exit_code(report), 0)
 
+    def test_lowspec_policy_marks_placement_speed(self):
+        report = self.report(policy="lowspec", available_memory=32 * GB)
+        checks = self.checks_by_id(report)
+        self.assertEqual(report["plan"]["policy"]["name"], "lowspec")
+        self.assertIn("placement.speed", checks)
+        self.assertEqual(checks["placement.speed"]["details"]["policy"], "lowspec")
+
+    def test_under_25gb_ram_warns(self):
+        report = self.report(available_memory=20 * GB, ram_gb=0)
+        checks = self.checks_by_id(report)
+        self.assertEqual(checks["memory.ram"]["status"], "warn")
+        self.assertIn("25 GB", checks["memory.ram"]["summary"])
+
     def test_missing_model_collects_failures_instead_of_stopping_early(self):
         report = self.report(model=self.root / "missing")
         checks = self.checks_by_id(report)
@@ -101,6 +114,7 @@ class DoctorTest(unittest.TestCase):
         self.assertEqual(checks["model.tokenizer"]["status"], "fail")
         self.assertEqual(checks["model.shards"]["status"], "fail")
         self.assertEqual(checks["storage.disk"]["status"], "skip")
+        self.assertEqual(checks["placement.speed"]["status"], "skip")
         self.assertIsNone(report["plan"])
         self.assertEqual(exit_code(report), 1)
 

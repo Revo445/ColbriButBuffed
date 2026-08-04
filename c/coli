@@ -289,7 +289,12 @@ def env_for(a):
             plan=build_plan(a.model,ram,ctx,devices,vram,policy=a.policy)
         except (OSError,ValueError,json.JSONDecodeError) as error:
             sys.exit(f"{C.yel}invalid resource plan:{C.r} {error}")
+        # lowspec is CPU-first: keep RAM for the expert LRU unless the user
+        # explicitly asked for a GPU (--gpu / --vram).
         has_cuda=cuda_binary()
+        if a.policy == "lowspec" and a.gpu is None and not a.vram:
+            has_cuda = False
+            e.setdefault("COLI_CUDA", "0")
         e=environment_for_plan(plan,e,has_cuda)
         if not getattr(a, "no_tune_profile", False):
             from autotune import apply_profile, load_profile
@@ -302,6 +307,45 @@ def env_for(a):
         rt=plan["tiers"]["ram"]; vt=plan["tiers"]["vram"]
         gpu=f" · VRAM {format_bytes(vt['budget_bytes'])}" if has_cuda and vt["devices"] else " · CPU"
         print(f"  {C.dim}[PLAN] RAM {format_bytes(rt['budget_bytes'])} · cap {rt['cache_slots_per_layer']}/layer{gpu}{C.r}",file=sys.stderr)
+    elif a.policy == "lowspec":
+        # Apply lowspec knobs on bare chat/serve (no --auto-tier required).
+        from resource_plan import build_plan, environment_for_plan, format_bytes
+        e.setdefault("COLI_CUDA", "0")
+        try:
+            ram,ctx,devices,vram=resource_request(a,e)
+            # Honor explicit --gpu; otherwise plan as CPU-only for RAM headroom.
+            if a.gpu is None and not a.vram:
+                devices = []
+                vram = 0
+            plan=build_plan(a.model,ram,ctx,devices,vram,policy="lowspec")
+            use_cuda = a.gpu not in (None, "none") or bool(a.vram)
+            e=environment_for_plan(plan,e,cuda_enabled=use_cuda and cuda_binary())
+            rt=plan["tiers"]["ram"]
+            print(f"  {C.dim}[LOWSPEC] RAM {format_bytes(rt['budget_bytes'])} · "
+                  f"cap {rt['cache_slots_per_layer']}/layer · PIN_GB={e.get('PIN_GB','?')} · "
+                  f"DRAFT=0 · PIPE/DIRECT/PILOT_REAL on{C.r}", file=sys.stderr)
+        except (OSError,ValueError,json.JSONDecodeError) as error:
+            # Model may be missing during `coli info` / doctor; still set safe knobs.
+            for k, v in (("PIPE", "1"), ("DIRECT", "1"), ("PILOT_REAL", "1"),
+                         ("DRAFT", "0"), ("CAP_RAISE", "0"), ("REPIN", "32"),
+                         ("PIN_GB", "2"), ("CTX", "2048")):
+                e.setdefault(k, v)
+            print(f"  {C.yel}[LOWSPEC] plan skipped ({error}); using safe streaming defaults{C.r}",
+                  file=sys.stderr)
+        if a.gpu is not None:
+            e.pop("COLI_GPU",None); e.pop("COLI_GPUS",None)
+            if a.gpu=="none":
+                e["COLI_CUDA"]="0"; e.pop("CUDA_EXPERT_GB",None); e.pop("CUDA_DENSE",None)
+            else:
+                if not cuda_binary():
+                    sys.exit(f"{C.yel}--gpu needs the CUDA build:{C.r} make colibri CUDA=1 (this binary is CPU-only)")
+                e["COLI_CUDA"]="1"
+                if a.gpu!="auto": e["COLI_GPUS"]=a.gpu
+                e.setdefault("CUDA_DENSE","1")
+        if a.vram and a.gpu!="none":
+            if not cuda_binary():
+                sys.exit(f"{C.yel}--vram needs the CUDA build:{C.r} make colibri CUDA=1 (this binary is CPU-only)")
+            e["COLI_CUDA"]="1"; e["CUDA_EXPERT_GB"]=str(a.vram)
     else:
         # Windows: a bare `coli chat` (no --gpu/--vram/--auto-tier) used to ALWAYS
         # run CPU-only, even on a CUDA build with a GPU present — cuda_binary()
@@ -616,6 +660,7 @@ def cmd_doctor(a):
     report=run_doctor(
         a.model, ram, ctx, devices, vram, engine_path=GLM, deep=a.deep,
         mirror_dir=os.environ.get("COLI_MODEL_MIRROR"),
+        policy=a.policy,
     )
     print(json.dumps(report,indent=2) if a.json else format_doctor(report))
     return exit_code(report)
@@ -1147,9 +1192,9 @@ def main():
     common.add_argument("--ctx",type=int,default=0)
     common.add_argument("--gpu",default=None,help="auto, none, or a device list such as 0,1")
     common.add_argument("--vram",type=float,default=0,help="total VRAM budget in GB (0=auto)")
-    common.add_argument("--policy",choices=("quality","balanced","experimental-fast"),
+    common.add_argument("--policy",choices=("quality","balanced","lowspec","experimental-fast"),
                         default=os.environ.get("COLI_POLICY","quality"),
-                        help="resource policy (explicit --topk/--topp overrides warn and proceed)")
+                        help="resource policy: quality|balanced|lowspec (25–64 GB)|experimental-fast")
     common.add_argument("--repin", type=int, default=0, help="adapt RAM/VRAM experts every N tokens")
     # Absent (None) = not explicitly set: the glm engine gets the 0 sentinel and picks
     # (8 historically; 1 on Metal+darwin+fast SSD, #379 -- an honest F_NOCACHE probe
@@ -1160,8 +1205,9 @@ def main():
     common.add_argument("--ngen", type=int, default=1024)  # rete di sicurezza: la fine vera la decidono gli stop token
     common.add_argument("--topp", type=float, default=0); common.add_argument("--topk", type=int, default=0)
     common.add_argument("--temp", type=float, default=None)  # temperatura token (0=greedy, default 1.0+nucleus .95)
-    ap=argparse.ArgumentParser(prog="coli", parents=[common], description="colibri — run GLM-5.2 locally")
-    ap.add_argument("--version", action="version", version=f"colibri {_version}")
+    ap=argparse.ArgumentParser(prog="coli", parents=[common],
+                               description="ColbriButBuffed — Colibrì fork for low-spec PCs (GLM-5.2)")
+    ap.add_argument("--version", action="version", version=f"ColbriButBuffed (colibri {_version})")
     sub=ap.add_subparsers(dest="cmd")
     sub.add_parser("build", parents=[common]); sub.add_parser("info", parents=[common])
     pp=sub.add_parser("plan",parents=[common])

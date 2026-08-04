@@ -405,7 +405,7 @@ def missing_shared_libraries(engine_path):
 
 def run_doctor(model, ram_gb=0, context=4096, gpu_indices=None, vram_gb=0, *,
                engine_path, available_memory=None, available_disk=None, gpus=None,
-               linkage=None, deep=False, mirror_dir=None):
+               linkage=None, deep=False, mirror_dir=None, policy="quality"):
     """Collect a complete report. No model payload, engine, or CUDA context is loaded."""
     model = Path(model).expanduser().resolve()
     checks = []
@@ -486,14 +486,24 @@ def run_doctor(model, ram_gb=0, context=4096, gpu_indices=None, vram_gb=0, *,
     try:
         plan = build_plan(model, ram_gb, context, gpu_indices, vram_gb,
                           available_memory=available_memory, available_disk=available_disk,
-                          gpus=detected_gpus)
+                          gpus=detected_gpus, policy=policy)
         model_info = plan["model"]
         checks.append(_check("model.shards", "pass", "safetensors headers are valid",
                              shards=model_info["shards"], model_bytes=model_info["model_bytes"]))
         disk = plan["tiers"]["disk"]
-        disk_status = "warn" if disk["available_bytes"] < GB else "pass"
-        disk_summary = ("less than 1 GB is free for runtime state" if disk_status == "warn" else
-                        "model backing store is available")
+        # GLM int4 container is ~372 GB; warn if free space cannot hold a fresh download
+        # or a second partial mirror (~50 GB headroom for runtime/state).
+        model_bytes = disk["model_bytes"]
+        free = disk["available_bytes"]
+        if free < GB:
+            disk_status, disk_summary = "warn", "less than 1 GB is free for runtime state"
+        elif model_bytes >= 100 * GB and free < 50 * GB:
+            disk_status, disk_summary = (
+                "warn",
+                f"only {free / GB:.0f} GB free beside a large model; keep headroom on a fast NVMe",
+            )
+        else:
+            disk_status, disk_summary = "pass", "model backing store is available"
         checks.append(_check("storage.disk", disk_status, disk_summary,
                              available_bytes=disk["available_bytes"], model_bytes=disk["model_bytes"]))
         ram = plan["tiers"]["ram"]
@@ -503,11 +513,33 @@ def run_doctor(model, ram_gb=0, context=4096, gpu_indices=None, vram_gb=0, *,
             ram_status, ram_summary = "fail", "planned RAM budget exceeds available memory"
         elif ram["cache_slots_per_layer"] < 1:
             ram_status, ram_summary = "fail", "RAM budget cannot hold one expert slot per sparse layer"
+        elif available_memory < 16 * GB:
+            ram_status, ram_summary = "fail", "usable RAM under 16 GB is below the streaming floor"
+        elif available_memory < 25 * GB:
+            ram_status, ram_summary = (
+                "warn",
+                "usable RAM under 25 GB: expect very slow disk-bound decode; 32 GB+ recommended",
+            )
         else:
             ram_status, ram_summary = "pass", "RAM budget is viable"
         checks.append(_check("memory.ram", ram_status, ram_summary,
                              available_bytes=available_memory, budget_bytes=ram["budget_bytes"],
                              cache_slots_per_layer=ram["cache_slots_per_layer"]))
+        hit = plan.get("projected_hit_rate", 1.0)
+        cold = disk.get("cold_expert_bytes", 0)
+        if cold and hit < 0.50:
+            checks.append(_check(
+                "placement.speed", "warn",
+                f"disk-bound placement (projected hit {hit:.0%}): cold decode often <1 tok/s; "
+                f"use --policy lowspec and warm .coli_usage for better hit rate",
+                projected_hit_rate=hit, cold_expert_bytes=cold, policy=policy,
+            ))
+        elif policy == "lowspec":
+            checks.append(_check(
+                "placement.speed", "pass",
+                "lowspec policy selected (PIPE/DIRECT/PILOT_REAL, DRAFT=0, modest PIN_GB)",
+                projected_hit_rate=hit, policy=policy,
+            ))
         if plan["warnings"]:
             checks.append(_check("placement.plan", "warn", "; ".join(plan["warnings"])))
         else:
@@ -531,6 +563,7 @@ def run_doctor(model, ram_gb=0, context=4096, gpu_indices=None, vram_gb=0, *,
         checks.append(_check("model.shards", "fail", str(error)))
         checks.append(_check("storage.disk", "skip", "storage check requires a valid model"))
         checks.append(_check("memory.ram", "skip", "RAM projection requires a valid model"))
+        checks.append(_check("placement.speed", "skip", "speed projection requires a valid model"))
         checks.append(_check("placement.plan", "skip", "placement requires a valid model"))
         checks.append(_check("storage.ssd_probe", "skip", "probe surfacing requires a valid model"))
 

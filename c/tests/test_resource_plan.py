@@ -433,6 +433,28 @@ class ResourcePlanTest(unittest.TestCase):
         explicit = environment_for_plan(plan, {"REPIN": "0"})
         self.assertEqual(explicit["REPIN"], "0")
 
+    def test_lowspec_policy_sets_streaming_defaults_and_modest_pin(self):
+        plan = build_plan(self.model, available_memory=32 * GB, available_disk=400 * GB,
+                          gpus=[], policy="lowspec")
+        self.assertEqual(plan["policy"]["name"], "lowspec")
+        self.assertTrue(plan["policy"]["quality_preserving"])
+        self.assertTrue(plan["policy"]["preserve_router"])
+        env = environment_for_plan(plan)
+        self.assertEqual(env["COLI_POLICY"], "lowspec")
+        self.assertEqual(env["DRAFT"], "0")
+        self.assertEqual(env["PIPE"], "1")
+        self.assertEqual(env["DIRECT"], "1")
+        self.assertEqual(env["PILOT_REAL"], "1")
+        self.assertEqual(env["CAP_RAISE"], "0")
+        self.assertEqual(env["REPIN"], "32")
+        self.assertEqual(env["CTX"], "2048")
+        self.assertIn(env["PIN_GB"], ("2", "4", "all"))
+        self.assertTrue(any("lowspec" in w for w in plan["warnings"]) or
+                        plan["projected_hit_rate"] >= 0.50)
+        explicit = environment_for_plan(plan, {"PIN_GB": "1", "DRAFT": "3"})
+        self.assertEqual(explicit["PIN_GB"], "1")
+        self.assertEqual(explicit["DRAFT"], "3")
+
     def test_plan_explains_hot_warm_and_cold_placement(self):
         plan = build_plan(self.model, ram_gb=4, vram_gb=0,
                           available_memory=4 * GB, available_disk=1, gpus=[])
