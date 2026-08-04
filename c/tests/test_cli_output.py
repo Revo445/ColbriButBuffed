@@ -28,7 +28,9 @@ class CliOutputLanguageTest(unittest.TestCase):
     def test_help_is_english(self):
         result = self.run_cli("--help")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("run GLM-5.2 locally", result.stdout)
+        self.assertIn("ColbriButBuffed", result.stdout)
+        self.assertIn("GLM-5.2", result.stdout)
+        self.assertIn("lowspec", result.stdout)
         self.assertIn("automatically apply the RAM/VRAM plan", result.stdout)
         self.assertNotIn("modello", result.stdout.lower())
         self.assertNotIn("motore", result.stdout.lower())
