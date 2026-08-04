@@ -412,6 +412,12 @@ def env_for(a):
             if not cuda_binary():
                 sys.exit(f"{C.yel}--vram needs the CUDA build:{C.r} make colibri CUDA=1 (this binary is CPU-only)")
             e["COLI_CUDA"]="1"; e["CUDA_EXPERT_GB"]=str(a.vram)
+    # Upstream release binaries only accept quality|balanced|experimental-fast.
+    # lowspec knobs (PIPE/DIRECT/PIN_GB/DRAFT/…) still apply; map the policy name
+    # so a stock colibri.exe does not exit(2) before load. Rebuild from this fork
+    # to get native COLI_POLICY=lowspec recognition in the C engine.
+    if e.get("COLI_POLICY") == "lowspec":
+        e["COLI_POLICY"] = "quality"
     return e
 
 # ---------- rendering markdown in STREAMING per il terminale ----------
