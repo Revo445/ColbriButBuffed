@@ -1,0 +1,13 @@
+[MTP] active: native speculative decoding (draft=0)
+[USAGE] expert history: 58240 selections (C:\glm52_i4/.coli_usage)
+[PIN] placement: 0 VRAM + 88 RAM expert (1.9 GB warm) in 2s da C:\glm52_i4/.coli_usage
+[RAM_GB=30.0] resident 13.3 GB + reserve 5.7 GB (ws 1.4, KV 1x2048 0.4, kvb 0.2), experts 21.2 MB x 77 layers -> cap lowered 64->6 (projected peak 28.7 GB)
+ERROR: no PROMPT given, so this is oracle self-test mode — but ref_glm.json is the TINY
+       model's oracle (max token 240) and your model's vocab is 154880. Nothing to validate here.
+         Engine self-test:  SNAP=./glm_tiny TF=1 ./glm 64 16 16      (expect ~30-32/32; FP near-ties are toolchain-dependent)
+         Real generation:   PROMPT="Hello" NGEN=32 SNAP=<model> ./glm 64
+         or:                python coli chat --model <model>
+         REF_FORCE=1 to run the comparison anyway (meaningless).
+  --- IT ---
+  Nessun PROMPT: modo auto-validazione, ma ref_glm.json e' l'oracolo del modello TINY
+  (token max 240, il tuo vocab e' 154880). Usa PROMPT=... per generare davvero (vedi sopra).
