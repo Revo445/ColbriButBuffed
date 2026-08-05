@@ -110,14 +110,18 @@ Point **ColbriChat** / the desktop app / browser at that gateway URL, then Probe
 
 ## What would “true” multi-node GLM need?
 
-A future engine would need something like: router on a coordinator, expert workers
-holding disjoint expert shards, RDMA/fast Ethernet for activations every layer. That is
-**not** implemented here. Until then, buy **RAM on one box** to speed a single stream,
-or add **nodes** to serve more streams.
+Peer **weight banks** ([pooled-ram.md](pooled-ram.md)) are a first step: pin experts in
+old boxes’ RAM and fetch slabs over TCP. On Gigabit that often loses to local NVMe
+unless the primary is swapping.
+
+A stronger Gigabit design is **remote compute** (send activations, peer runs the expert
+matmul). That still needs more engine work. Until then, buy **RAM on one box** to speed
+a single stream, or add **nodes** (capacity LB) to serve more streams.
 
 ## Related
 
 - [lowspec.md](lowspec.md) — single-node 25–64 GB policy
+- [pooled-ram.md](pooled-ram.md) — experimental one-instance peer RAM bank
 - [serve_protocol.md](serve_protocol.md) — engine ↔ gateway wire format
 - [api.md](api.md) — HTTP surface
 - Upstream Colibrì: https://github.com/JustVugg/colibri

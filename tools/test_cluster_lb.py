@@ -84,6 +84,8 @@ class ClusterLbTest(unittest.TestCase):
         finally:
             busy.shutdown()
             free.shutdown()
+            busy.server_close()
+            free.server_close()
 
 
 if __name__ == "__main__":
