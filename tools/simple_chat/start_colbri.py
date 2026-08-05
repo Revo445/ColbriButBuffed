@@ -28,22 +28,78 @@ DEFAULT_PORT = 8000
 DEFAULT_BASE = f"http://127.0.0.1:{DEFAULT_PORT}/v1"
 
 
+def _is_frozen() -> bool:
+    return bool(getattr(sys, "frozen", False)) or hasattr(sys, "_MEIPASS")
+
+
+def _looks_like_repo(path: Path) -> bool:
+    return (path / "c" / "coli").is_file()
+
+
 def repo_root() -> Path:
-    here = Path(__file__).resolve()
-    # tools/simple_chat/start_colbri.py -> repo root
-    if here.parent.name == "simple_chat":
-        return here.parents[2]
-    return here.parent
+    """Find the ColbriButBuffed checkout — never use PyInstaller _MEI temp dirs."""
+    env = os.environ.get("COLI_ROOT", "").strip()
+    if env and _looks_like_repo(Path(env)):
+        return Path(env).resolve()
+
+    candidates: list[Path] = []
+    if _is_frozen():
+        # StartColbriButBuffed.exe lives in desktop/dist or tools/simple_chat/dist
+        exe = Path(sys.executable).resolve()
+        candidates.extend([exe.parent, exe.parent.parent, exe.parent.parent.parent])
+        # desktop/dist -> repo; tools/simple_chat/dist -> repo
+        if exe.parent.name == "dist":
+            candidates.append(exe.parents[2])  # desktop/dist or simple_chat/dist
+            candidates.append(exe.parents[3])
+    else:
+        here = Path(__file__).resolve()
+        if here.parent.name == "simple_chat":
+            candidates.append(here.parents[2])
+        candidates.append(here.parent)
+
+    candidates.append(Path.cwd())
+    # Walk upward from cwd and from exe/script location
+    seeds = list(candidates)
+    for seed in seeds:
+        cur = seed.resolve()
+        for _ in range(6):
+            candidates.append(cur)
+            if cur.parent == cur:
+                break
+            cur = cur.parent
+
+    seen: set[Path] = set()
+    for path in candidates:
+        try:
+            path = path.resolve()
+        except OSError:
+            continue
+        if path in seen:
+            continue
+        seen.add(path)
+        if _looks_like_repo(path):
+            return path
+
+    # Last resort: common clone path from earlier sessions
+    fallback = Path(r"C:\Users\Isaac Sherer\Projects\colibri-lowspec")
+    if _looks_like_repo(fallback):
+        return fallback
+
+    # Return best guess for error messages
+    if _is_frozen():
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
 
 
 def find_chat_exe(root: Path) -> Path | None:
     candidates = [
         root / "desktop" / "dist" / "ColbriChat.exe",
         root / "tools" / "simple_chat" / "dist" / "ColbriChat.exe",
+        Path(sys.executable).resolve().parent / "ColbriChat.exe" if _is_frozen() else None,
         root / "desktop" / "dist" / "ColbriButBuffed.exe",
     ]
     for path in candidates:
-        if path.is_file():
+        if path and path.is_file():
             return path
     return None
 
@@ -65,7 +121,20 @@ def api_ready(base: str, timeout: float = 2.0) -> bool:
 
 
 def which_python() -> str:
-    return sys.executable or "python"
+    """Real Python interpreter — never the frozen StartColbri exe itself."""
+    if not _is_frozen() and sys.executable:
+        return sys.executable
+    for name in ("python", "python3", "py"):
+        from shutil import which
+        found = which(name)
+        if found and Path(found).resolve() != Path(sys.executable).resolve():
+            return found
+    # Windows py launcher
+    from shutil import which
+    py = which("py")
+    if py:
+        return py
+    return "python"
 
 
 class StarterApp(tk.Tk):
