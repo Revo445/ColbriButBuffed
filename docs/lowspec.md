@@ -91,5 +91,6 @@ model directory writable.
 - Upstream quick start: [quickstart.md](quickstart.md)
 - Windows deep dive: [windows.md](windows.md)
 - Env reference: [ENVIRONMENT.md](ENVIRONMENT.md)
+- **Proxmox multi-node fleet** (capacity cluster, not expert-sharding): [proxmox-cluster.md](proxmox-cluster.md)
 - Upstream project: https://github.com/JustVugg/colibri
 - This fork: https://github.com/Revo445/ColbriButBuffed

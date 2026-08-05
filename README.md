@@ -61,6 +61,10 @@ python coli chat   --model /path/to/glm52_i4 --policy lowspec
 Full walkthrough: **[docs/lowspec.md](docs/lowspec.md)**. You still need the ~372 GB int4
 model on a fast local NVMe — RAM only holds the dense weights plus a small expert cache.
 
+Several Proxmox PCs? Use a **capacity fleet** (one full `coli serve` per node + load
+balancer) — see **[docs/proxmox-cluster.md](docs/proxmox-cluster.md)**. That scales
+concurrent chats; it does not split one decode across machines.
+
 ## See it running
 
 <p align="center">
