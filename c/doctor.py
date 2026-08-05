@@ -491,12 +491,18 @@ def run_doctor(model, ram_gb=0, context=4096, gpu_indices=None, vram_gb=0, *,
         checks.append(_check("model.shards", "pass", "safetensors headers are valid",
                              shards=model_info["shards"], model_bytes=model_info["model_bytes"]))
         disk = plan["tiers"]["disk"]
-        # GLM int4 container is ~372 GB; warn if free space cannot hold a fresh download
-        # or a second partial mirror (~50 GB headroom for runtime/state).
+        # GLM int4 container is ~372 GB. Warn when free space cannot hold a fresh
+        # download (~380 GB), or when a large install has thin runtime headroom.
         model_bytes = disk["model_bytes"]
         free = disk["available_bytes"]
+        need_download = 380 * GB
         if free < GB:
             disk_status, disk_summary = "warn", "less than 1 GB is free for runtime state"
+        elif model_bytes < 300 * GB and free < need_download:
+            disk_status, disk_summary = (
+                "warn",
+                f"only {free / GB:.0f} GB free; GLM-5.2 int4 needs ~380 GB on a fast local NVMe",
+            )
         elif model_bytes >= 100 * GB and free < 50 * GB:
             disk_status, disk_summary = (
                 "warn",

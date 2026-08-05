@@ -2,6 +2,9 @@
 
 Keep changes focused and preserve Colibri's dependency-free default CPU path.
 
+**ColbriButBuffed remotes:** `origin` → [Revo445/ColbriButBuffed](https://github.com/Revo445/ColbriButBuffed);
+optional `upstream` → [JustVugg/colibri](https://github.com/JustVugg/colibri) for syncing.
+
 ## Branches
 
 - **`main`** is the stable branch. It's what users clone, and it stays known-good
