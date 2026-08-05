@@ -211,11 +211,10 @@ class StarterApp(tk.Tk):
             return
         chat_py = self.root / "tools" / "simple_chat" / "colbri_chat.py"
         if chat_py.is_file():
-            flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0  # type: ignore[attr-defined]
-            try:
-                subprocess.Popen([which_python(), str(chat_py)], creationflags=flags)
-            except Exception:
-                subprocess.Popen([which_python(), str(chat_py)])
+            kwargs = {}
+            if sys.platform == "win32":
+                kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+            subprocess.Popen([which_python(), str(chat_py)], **kwargs)
             self.status.set("Opened ColbriChat (python)")
             return
         messagebox.showerror(
