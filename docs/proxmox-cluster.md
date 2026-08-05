@@ -15,7 +15,7 @@ a new RPC engine path and would usually be *slower* than local NVMe on a 33 GB b
 | More **concurrent** users | Yes | N independent `coli serve` + LB |
 | Faster **single** reply | Mostly no | Need more RAM/VRAM *on one node*, or a smaller model |
 | Shared Ceph/NFS model dir | Avoid | Expert I/O over the network kills tok/s |
-| One decode across nodes | Not in Colibri today | Would be a major engine project |
+| One decode across nodes | Experimental | Peer **RAM pool** for expert pins — [pooled-ram.md](pooled-ram.md). Not a unified address space; Gigabit often loses to local NVMe unless the primary is swapping. |
 
 Per-node speed still follows [lowspec.md](lowspec.md): on 25–64 GB RAM, disk-bound
 decode is often **&lt;1 tok/s** cold. The cluster multiplies *capacity*, not that rate.
