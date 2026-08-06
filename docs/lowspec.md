@@ -29,6 +29,9 @@ Use the **gs64** GLM-5.2 container with **int8 MTP heads** from the upstream REA
 (int4 MTP heads silently destroy draft acceptance). Lowspec turns **MTP off**
 (`DRAFT=0`) because speculation widens the expert union on disk-bound hosts.
 
+Want an **abliterated** (uncensored) Colibri build? See [abliterated.md](abliterated.md)
+— Huihui’s GGUF cannot be used; download the Colibri-format container instead.
+
 ## Windows PowerShell quick path
 
 1. Install [Python 3](https://www.python.org/downloads/) and build tools
@@ -88,5 +91,7 @@ model directory writable.
 - Upstream quick start: [quickstart.md](quickstart.md)
 - Windows deep dive: [windows.md](windows.md)
 - Env reference: [ENVIRONMENT.md](ENVIRONMENT.md)
+- **Proxmox multi-node fleet** (capacity cluster, not expert-sharding): [proxmox-cluster.md](proxmox-cluster.md)
+- **Pooled peer RAM** (one instance, experimental): [pooled-ram.md](pooled-ram.md)
 - Upstream project: https://github.com/JustVugg/colibri
 - This fork: https://github.com/Revo445/ColbriButBuffed

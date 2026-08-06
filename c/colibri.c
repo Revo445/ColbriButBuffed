@@ -1012,6 +1012,7 @@ static int g_disk_split=0; /* DISK_SPLIT=1: contatori che spezzano i DISK LOAD (
 #include "sample.h"
 #include "kv_persist.h"
 #include "telemetry.h"
+#include "ram_bank_client.h"                       /* COLI_RAM_BANK: optional peer expert cache */
 
 /* Aligned allocator for dense QT weights/scales: under METAL, page-align + register so the
  * GPU reads them zero-copy (no upload duplicate). Plain malloc otherwise. */
@@ -2308,6 +2309,33 @@ static int expert_load_impl(Model *m, int layer, int eid, ESlot *s, int fatal, i
               && tw[ord[0]]->off+tw[ord[0]]->nbytes==tw[ord[1]]->off
               && tw[ord[1]]->off+tw[ord[1]]->nbytes==tw[ord[2]]->off;
     int64_t pos[3]; int done=0, dc_direct=0;
+    /* Experimental: peer RAM bank before local disk (docs/pooled-ram.md). */
+    if(contig && getenv("COLI_RAM_BANK")){
+        if(ram_bank_fetch(layer, eid, s->slab, wtot, s->fslab, ftot)){
+            pos[ord[0]]=0; pos[ord[1]]=tw[ord[0]]->nbytes; pos[ord[2]]=tw[ord[0]]->nbytes+tw[ord[1]]->nbytes;
+            done=1;
+            atomic_fetch_add_explicit(&g_prof_io,wtot+ftot*4,memory_order_relaxed);
+            if(dc_on){
+                double dc_t1=now_s();
+                atomic_fetch_add_explicit(&g_dc_n[dc_cls],1,memory_order_relaxed);
+                atomic_fetch_add_explicit(&g_dc_bytes[dc_cls],wtot+ftot*4,memory_order_relaxed);
+                atomic_fetch_add_explicit(&g_dc_ns[dc_cls],(int64_t)((dc_t1-dc_t0)*1e9),memory_order_relaxed);
+                dc_wall_exit(dc_cls,dc_t1);
+            }
+            float *fp[3]; int64_t fo=0;
+            for(int k=0;k<3;k++){ fp[k]=s->fslab+fo; fo+=tq[k]->nbytes/4; }
+            QT *qt[3]={&s->g,&s->u,&s->d}; int OO[3]={I,I,D}, II[3]={D,D,I};
+            for(int k=0;k<3;k++){
+                int64_t nb=tw[k]->nbytes;
+                int gs=0;
+                int fmt=qt_resolve_fmt(tw[k]->name,OO[k],II[k],nb,tq[k]->nbytes,&gs,NULL);
+                qt[k]->fmt=fmt; qt[k]->O=OO[k]; qt[k]->I=II[k]; qt[k]->gs=gs; qt[k]->qf=NULL;
+                qt[k]->q8=(int8_t*)((char*)s->slab+pos[k]); qt[k]->q4=(uint8_t*)((char*)s->slab+pos[k]);
+                qt[k]->s=fp[k];
+            }
+            s->eid=eid; return 0;
+        }
+    }
     if(contig){
         int64_t off0=tw[ord[0]]->off;
         int dfd = g_direct ? st_direct_fd_rep(&m->S, tw[ord[0]]->fd, rep) : -1;

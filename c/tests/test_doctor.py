@@ -67,7 +67,7 @@ class DoctorTest(unittest.TestCase):
             "vram_gb": 0,
             "engine_path": self.engine,
             "available_memory": 32 * GB,
-            "available_disk": 100 * GB,
+            "available_disk": 400 * GB,
             "gpus": [],
             "linkage": {"linked": False, "missing": False},
         }
@@ -88,8 +88,16 @@ class DoctorTest(unittest.TestCase):
         self.assertIsNotNone(report["plan"])
         self.assertEqual(checks["accelerator.cuda"]["status"], "skip")
         self.assertEqual(checks["memory.ram"]["status"], "pass")
+        self.assertEqual(checks["storage.disk"]["status"], "pass")
         self.assertEqual(checks["model.shards"]["details"]["shards"], 1)
         self.assertEqual(exit_code(report), 0)
+
+    def test_under_380gb_free_warns_for_incomplete_glm_install(self):
+        report = self.report(available_disk=100 * GB)
+        checks = self.checks_by_id(report)
+        self.assertEqual(checks["storage.disk"]["status"], "warn")
+        self.assertIn("380 GB", checks["storage.disk"]["summary"])
+        self.assertEqual(report["status"], "warning")
 
     def test_lowspec_policy_marks_placement_speed(self):
         report = self.report(policy="lowspec", available_memory=32 * GB)

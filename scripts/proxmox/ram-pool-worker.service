@@ -1,0 +1,22 @@
+[Unit]
+Description=ColbriButBuffed RAM-pool expert worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=colibri
+Group=colibri
+WorkingDirectory=/opt/ColbriButBuffed
+Environment=MODEL=/models/glm52_i4
+Environment=BUDGET_GB=8
+Environment=BIND=0.0.0.0:9400
+Environment=WORKER_INDEX=0
+Environment=WORKER_COUNT=1
+ExecStart=/usr/bin/python3 tools/ram_pool/worker.py
+Restart=on-failure
+RestartSec=5
+LimitMEMLOCK=infinity
+
+[Install]
+WantedBy=multi-user.target

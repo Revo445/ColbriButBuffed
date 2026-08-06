@@ -1,0 +1,19 @@
+[Unit]
+Description=ColbriButBuffed cluster load balancer
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=colibri
+Group=colibri
+WorkingDirectory=/opt/ColbriButBuffed
+# Comma-separated coli serve bases (no trailing slash required):
+Environment=COLI_BACKENDS=http://10.0.0.11:8000,http://10.0.0.12:8000
+# Optional: Environment=COLI_LB_API_KEY=secret
+ExecStart=/usr/bin/python3 tools/cluster_lb.py --host 0.0.0.0 --port 8080
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

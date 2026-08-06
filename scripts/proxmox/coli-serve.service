@@ -1,0 +1,26 @@
+[Unit]
+Description=ColbriButBuffed coli serve (lowspec GLM-5.2)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=colibri
+Group=colibri
+WorkingDirectory=/opt/ColbriButBuffed/c
+# Edit these paths for your node:
+Environment=MODEL=/models/glm52_i4
+Environment=HOST=0.0.0.0
+Environment=PORT=8000
+# Optional knobs (lowspec already applies defaults):
+# Environment=DIRECT=0
+# Environment=PIN_GB=6
+ExecStart=/usr/bin/python3 coli serve --model ${MODEL} --policy lowspec --host ${HOST} --port ${PORT}
+Restart=on-failure
+RestartSec=10
+# Long load / disk-bound decode — do not kill on slow start:
+TimeoutStartSec=0
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

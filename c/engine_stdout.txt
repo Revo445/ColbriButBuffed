@@ -1,0 +1,2 @@
+== GLM C engine (glm_moe_dsa), cache=64 experts/layer | experts@8-bit dense@8-bit | idot: avx2 ==
+loaded in 9.49s | resident dense: 10869.90 MB | layers=78 experts=256 | MTP ACTIVE (draft=0)
