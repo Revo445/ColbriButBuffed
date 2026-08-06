@@ -2,41 +2,40 @@
 
 ## Recommended model
 
-**`qwen3:30b`** (Qwen3-30B-A3B MoE)
+**`huihui_ai/qwen3-abliterated:30b-a3b`** (abliterated Qwen3-30B-A3B)
 
 | | |
 |--|--|
-| Download | ~**19 GB** |
+| Download | ~**19 GB** (Q4) |
 | RAM to run | ~**21–24 GB** (fits your ~32 GB box) |
-| Active params | ~**3B** / token → much snappier on **CPU / Radeon** than dense 32B or GLM streaming |
-| Strength | Coding, reasoning, general chat — strong “worth using” tier without 350 GB of experts |
+| Active params | ~**3B** / token → usable on **CPU / Radeon** |
+| Abliterated | Yes (huihui-ai) |
 
-Your GLM-5.2 Colibri path was correct but **disk-bound** on this machine (often &lt;1 tok/s, easy to look “broken” on long code). Ollama + Qwen3-30B-A3B is the practical replacement.
+Stock (censored) alternative: `qwen3:30b`.
 
-### Alternatives
-
-| Model | When |
-|-------|------|
-| `qwen3:14b` (~9 GB) | More RAM headroom / faster |
-| `deepseek-r1:32b` (~20 GB) | Prefer long “thinking” traces |
-| `qwen2.5-coder:32b` (~20 GB) | Coding-focused dense 32B (slower than 30B-A3B on CPU) |
-
-Abliterated 32B distills exist on HF, but for a **reliable first Ollama install** use the official `qwen3:30b` tag.
-
-## Setup
+### Setup / download
 
 ```powershell
 cd "C:\Users\Isaac Sherer\Projects\colibri-lowspec"
 git pull origin cursor/cloud-agent-1785957627164-dbjnb
 
-powershell -ExecutionPolicy Bypass -File .\scripts\Setup-Ollama-Qwen3.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\Setup-Ollama-Qwen3-Abliterated.ps1
 ```
 
-Then:
+Or manually:
 
 ```powershell
-ollama run qwen3:30b
+ollama pull huihui_ai/qwen3-abliterated:30b-a3b
+ollama run huihui_ai/qwen3-abliterated:30b-a3b
 ```
+
+Do **not** use `:30b-a3b-q8_0` on this PC — Q8 needs ~32+ GB and will thrash.
+
+## Use with ColbriChat
+
+1. Ollama running in the tray.
+2. API endpoint **`http://127.0.0.1:11434/v1`**
+3. Probe → pick the abliterated model → chat.
 
 ## Use with ColbriChat
 
