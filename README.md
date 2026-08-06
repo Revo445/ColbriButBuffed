@@ -64,9 +64,8 @@ model on a fast local NVMe — RAM only holds the dense weights plus a small exp
 Several Proxmox PCs? Two modes:
 
 - **Capacity fleet** (many chats): [docs/proxmox-cluster.md](docs/proxmox-cluster.md)
-- **Pooled RAM** (one chat, peer-pinned experts): [docs/pooled-ram.md](docs/pooled-ram.md) —
-  experimental; does **not** magically merge RAM into one address space, and Gigabit
-  often loses to local NVMe unless the primary is swapping.
+- Want **MiniMax-H3 video** with the Heretic NVFP4 encoder in ComfyUI (not Colibri)?
+See **[docs/comfyui-minimax-h3.md](docs/comfyui-minimax-h3.md)** and run `scripts/comfyui/Setup-MiniMaxH3.ps1`.
 
 ## See it running
 
